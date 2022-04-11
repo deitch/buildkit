@@ -543,6 +543,7 @@ func (lbf *llbBridgeForwarder) ResolveImageConfig(ctx context.Context, req *pb.R
 		Platform:    platform,
 		ResolveMode: req.ResolveMode,
 		LogName:     req.LogName,
+		Source:      llb.ContainerImageResolverType(req.Source),
 	})
 	if err != nil {
 		return nil, err

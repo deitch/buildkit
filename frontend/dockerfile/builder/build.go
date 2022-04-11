@@ -27,6 +27,7 @@ import (
 	"github.com/moby/buildkit/solver/errdefs"
 	"github.com/moby/buildkit/solver/pb"
 	binfotypes "github.com/moby/buildkit/util/buildinfo/types"
+	digest "github.com/opencontainers/go-digest"
 	ocispecs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
@@ -849,6 +850,7 @@ func contextByName(ctx context.Context, c client.Client, name string, platform *
 			Platform:    platform,
 			ResolveMode: resolveMode,
 			LogName:     fmt.Sprintf("[context %s] load metadata for %s", name, ref),
+			Source:      llb.ResolverTypeRegistry,
 		})
 		if err != nil {
 			return nil, nil, nil, err
@@ -878,6 +880,49 @@ func contextByName(ctx context.Context, c client.Client, name string, platform *
 			st = &httpst
 		}
 		return st, nil, nil, nil
+	case "oci-layout":
+		ref := strings.TrimPrefix(vv[1], "//")
+		// expected format is storeID@hash
+		parts := strings.SplitN(ref, "@", 2)
+		if len(parts) != 2 {
+			return nil, nil, nil, errors.Errorf("invalid oci-layout format '%s', must be oci-layout:///content-store@sha256:digest", vv[1])
+		}
+		storeID := parts[0]
+		dig, err := digest.Parse(parts[1])
+		if err != nil {
+			return nil, nil, nil, errors.Errorf("invalid digest format '%s', must be oci-layout:///content-store@sha256:digest", vv[1])
+		}
+
+		// the ref now is "content-store@sha256:digest"
+		// ResolveImageConfig will try to treat that as a valid reference,
+		// to be parsed with https://pkg.go.dev/github.com/containerd/containerd@v1.6.6/reference#Parse
+		// That will fail, because it will think that "content-store@sha256" is a host and "digest" is a port.
+		// To get it to pass, we need to jury-rig it with a host, so that it is a legitimate ref and can
+		// be processed.
+		// A reasonable format is storeID as host, so
+		//    storeID/image@digest
+		// We do not support any image lookup for now, so any image will do; it is ignored.
+
+		usableRef := fmt.Sprintf("%s/%s@%s", storeID, "image", dig)
+		_, data, err := c.ResolveImageConfig(ctx, usableRef, llb.ResolveImageConfigOpt{
+			Platform:    platform,
+			ResolveMode: resolveMode,
+			LogName:     fmt.Sprintf("[context %s] load metadata for %s", name, ref),
+			Source:      llb.ResolverTypeOCILayout,
+		})
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		st := llb.OCILayout(storeID, dig,
+			llb.WithCustomName("[context "+name+"] OCI load from client"),
+			llb.OCISessionID(c.BuildOpts().SessionID),
+		)
+		st, err = st.WithImageConfig(data)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		return &st, nil, nil, nil
 	case "local":
 		st := llb.Local(vv[1],
 			llb.SessionID(c.BuildOpts().SessionID),

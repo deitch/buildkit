@@ -83,6 +83,7 @@ message ResolveImageConfigRequest {
 	pb.Platform Platform = 2;
 	string ResolveMode = 3;
 	string LogName = 4;
+	string Source = 5;
 }
 
 message ResolveImageConfigResponse {

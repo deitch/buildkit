@@ -34,8 +34,16 @@ type ImageMetaResolver interface {
 	ResolveImageConfig(ctx context.Context, ref string, opt ResolveImageConfigOpt) (digest.Digest, []byte, error)
 }
 
+type ContainerImageResolverType string
+
+const (
+	ResolverTypeRegistry  ContainerImageResolverType = "registry"
+	ResolverTypeOCILayout ContainerImageResolverType = "oci-layout"
+)
+
 type ResolveImageConfigOpt struct {
 	Platform    *ocispecs.Platform
 	ResolveMode string
 	LogName     string
+	Source      ContainerImageResolverType // default is ResolverTypeRegistry
 }
