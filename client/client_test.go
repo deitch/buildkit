@@ -1640,6 +1640,7 @@ func testOCILayoutSource(t *testing.T, sb integration.Sandbox) {
 	require.NoError(t, err)
 
 	for filename, content := range m {
+<<<<<<< HEAD
 		fullFilename := path.Join(dir, filename)
 		err = os.MkdirAll(path.Dir(fullFilename), 0755)
 		require.NoError(t, err)
@@ -1650,6 +1651,9 @@ func testOCILayoutSource(t *testing.T, sb integration.Sandbox) {
 			err = os.WriteFile(fullFilename, content.Data, 0644)
 			require.NoError(t, err)
 		}
+=======
+		os.WriteFile(path.Join(dir, filename), content.Data, 0644)
+>>>>>>> 986ffc92 (Add OCI source)
 	}
 
 	var index ocispecs.Index
