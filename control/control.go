@@ -20,6 +20,7 @@ import (
 	"github.com/moby/buildkit/solver/pb"
 	"github.com/moby/buildkit/util/bklog"
 	"github.com/moby/buildkit/util/imageutil"
+	"github.com/moby/buildkit/util/stack"
 	"github.com/moby/buildkit/util/throttle"
 	"github.com/moby/buildkit/util/tracing/transform"
 	"github.com/moby/buildkit/version"
@@ -319,6 +320,8 @@ func (c *Controller) Solve(ctx context.Context, req *controlapi.SolveRequest) (*
 		CacheExportMode: cacheExportMode,
 	}, req.Entitlements)
 	if err != nil {
+		bklog.G(ctx).Debugf("solver.Solve returned error %v", err)
+		bklog.G(ctx).Debug(stack.Traces(err))
 		return nil, err
 	}
 	return &controlapi.SolveResponse{
